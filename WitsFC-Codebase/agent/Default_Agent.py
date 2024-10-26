@@ -3,11 +3,11 @@ from math_ops.Math_Ops import Math_Ops as M
 import math
 import numpy as np
 
-from formation.Formation import Formation
 from strategy.Assignment import role_assignment
 from strategy.Assignment import pass_reciever_selector
 from strategy.Strategy import Strategy 
 
+from formation.Default_Formation import GenerateBasicFormation
 
 
 class Agent(Base_Agent):
@@ -213,31 +213,105 @@ class Agent(Base_Agent):
 
     def select_skill(self,strategyData):
         #--------------------------------------- 2. Decide action
-        goal = (15,0) # Opponents Goal
+
+        drawer = self.world.draw
+        
+        path_draw_options = self.path_manager.draw_options
+
+        target = (15,0) # Opponents Goal
 
         #------------------------------------------------------
         #Role Assignment
+        if strategyData.active_player_unum == strategyData.robot_model.unum: # I am the active player 
+            drawer.annotation((0,10.5), "Role Assignment Phase" , drawer.Color.yellow, "status")
+        else:
+            drawer.clear("status")
 
-        formation_positions = []
-
-        active_player = strategyData.active_player_unum - 1
-        
-        formation = Formation(strategyData.teammate_positions, strategyData.teammate_positions[active_player])
-        if strategyData.play_mode <= 8 or strategyData.play_mode >= 18:
-            formation.update_formation()
-        formation_positions = formation.get_formation()
+        formation_positions = GenerateBasicFormation()
         point_preferences = role_assignment(strategyData.teammate_positions, formation_positions)
         strategyData.my_desired_position = point_preferences[strategyData.player_unum]
         strategyData.my_desried_orientation = strategyData.GetDirectionRelativeToMyPositionAndTarget(strategyData.my_desired_position)
 
+        drawer.line(strategyData.mypos, strategyData.my_desired_position, 2,drawer.Color.blue,"target line")
+
+        if not strategyData.IsFormationReady(point_preferences):
+            return self.move(strategyData.my_desired_position, orientation=strategyData.my_desried_orientation)
+        #else:
+        #     return self.move(strategyData.my_desired_position, orientation=strategyData.ball_dir)
+
+
+    
         #------------------------------------------------------
         #Pass Selector
         if strategyData.active_player_unum == strategyData.robot_model.unum: # I am the active player 
-            target = pass_reciever_selector(strategyData.player_unum, strategyData.teammate_positions, goal)
+            drawer.annotation((0,10.5), "Pass Selector Phase" , drawer.Color.yellow, "status")
+        else:
+            drawer.clear_player()
+
+
+
+        if strategyData.active_player_unum == strategyData.robot_model.unum: # I am the active player 
+            target = pass_reciever_selector(strategyData.player_unum, strategyData.teammate_positions, (15,0))
+            drawer.line(strategyData.mypos, target, 2,drawer.Color.red,"pass line")
             return self.kickTarget(strategyData,strategyData.mypos,target)
         else:
+            drawer.clear("pass line")
             return self.move(strategyData.my_desired_position, orientation=strategyData.ball_dir)
             
+
+
+
+
+
+        # if strategyData.PM == self.world.M_GAME_OVER:
+        #     pass
+        # elif strategyData.PM_GROUP == self.world.MG_ACTIVE_BEAM:
+        #     self.beam()
+        # elif strategyData.PM_GROUP == self.world.MG_PASSIVE_BEAM:
+        #     self.beam(True) # avoid center circle
+        # elif self.state == 1 or (behavior.is_ready("Get_Up") and self.fat_proxy_cmd is None):
+        #     self.state = 0 if behavior.execute("Get_Up") else 1 # return to normal state if get up behavior has finished
+        # elif strategyData.PM == self.world.M_OUR_KICKOFF:
+        #     if strategyData.robot_model.unum == 9:
+        #         self.kick(120,3) # no need to change the state when PM is not Play On
+        #     else:
+        #         self.move(self.init_pos, orientation=strategyData.ball_dir) # walk in place
+        # elif strategyData.PM == self.world.M_THEIR_KICKOFF:
+        #     self.move(self.init_pos, orientation=strategyData.ball_dir) # walk in place
+        # elif strategyData.active_player_unum != strategyData.robot_model.unum: # I am not the active player
+        #     if strategyData.robot_model.unum == 1: # I am the goalkeeper
+        #         self.move(self.init_pos, orientation=strategyData.ball_dir) # walk in place 
+        #     else:
+        #         # compute basic formation position based on ball position
+        #         new_x = max(0.5,(strategyData.ball_2d[0]+15)/15) * (self.init_pos[0]+15) - 15
+        #         if strategyData.min_teammate_ball_dist < strategyData.min_opponent_ball_dist:
+        #             new_x = min(new_x + 3.5, 13) # advance if team has possession
+        #         self.move((new_x,self.init_pos[1]), orientation=strategyData.ball_dir, priority_unums=[strategyData.active_player_unum])
+
+        # else: # I am the active player
+        #     path_draw_options(enable_obstacles=True, enable_path=True, use_team_drawing_channel=True) # enable path drawings for active player (ignored if self.enable_draw is False)
+
+            
+        #     enable_pass_command = (strategyData.PM == self.world.M_PLAY_ON and strategyData.ball_2d[0]<6)
+
+        #     if strategyData.robot_model.unum == 1 and strategyData.PM_GROUP == self.world.MG_THEIR_KICK: # goalkeeper during their kick
+        #         self.move(self.init_pos, orientation=strategyData.ball_dir) # walk in place 
+        #     if strategyData.PM == self.world.M_OUR_CORNER_KICK:
+        #         self.kick( -np.sign(strategyData.ball_2d[1])*95, 5.5) # kick the ball into the space in front of the opponent's goal
+        #         # no need to change the state when PM is not Play On
+        #     elif strategyData.min_opponent_ball_dist + 0.5 < strategyData.min_teammate_ball_dist: # defend if opponent is considerably closer to the ball
+        #         if self.state == 2: # commit to kick while aborting
+        #             self.state = 0 if self.kick(abort=True) else 2
+        #         else: # move towards ball, but position myself between ball and our goal
+        #             self.move(strategyData.slow_ball_pos + M.normalize_vec((-16,0) - strategyData.slow_ball_pos) * 0.2, is_aggressive=True)
+        #     else:
+        #         self.state = 0 if self.kick(strategyData.goal_dir,9,False,enable_pass_command) else 2
+
+        #     path_draw_options(enable_obstacles=False, enable_path=False) # disable path drawings
+
+
+    
+
     #--------------------------------------- Fat proxy auxiliary methods
 
 

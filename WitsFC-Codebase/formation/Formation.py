@@ -26,9 +26,9 @@ class Formation:
     def update_formation(self):
         # Set goalkeeper and defence
         self.formation[0] = np.array([-14, self.ball_location[1] / 10 ])
-        self.formation[1] = np.array([-11, -5])
-        self.formation[2] = np.array([-9, 0])
-        self.formation[3] = np.array([-11,  5])
+        self.formation[1] = np.array([-12, -3])
+        self.formation[2] = np.array([-11, 0])
+        self.formation[3] = np.array([-12,  3])
 
         if self.ball_location[0] >= 0:
             self.formation[4] = self.ball_location + np.array([-2, -7]) 
